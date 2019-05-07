@@ -9,6 +9,10 @@ import math
 from numpy.linalg import norm
 import numpy as np
 import os
+import json
+import datetime
+import xlrd
+
 from pyexcel_ods import get_data
 
 
@@ -123,8 +127,6 @@ def writeCsv(f_outDir, f_name, wingData):
               filewriter.writerow(dataToWrite)
               
 def writeJson(f_outDir, file, wingData):
-    import json
-    import datetime
     rows, cols = wingData.shape
     f_name, f_ext= file.split('.')
     
@@ -264,8 +266,8 @@ def parseOdsWingFiles(inDir, outDir):
             wing["y6"] = row[11]
             wing["x7"] = row[12]
             wing["y7"] = row[13]
-            wing["Ci"] = vingindex1.cubitalindex(np.array([row[6], row[7]]), np.array([row[8], row[9]]), np.array([row[10], row[11]]))
-            wing["Dv"] = vingindex1.discoidalvinkel(np.array([row[0], row[1]]), np.array([row[2], row[3]]), np.array([row[4], row[5]]), np.array([row[12], row[13]]))
+            wing["Ci"] = cubitalindex(np.array([row[6], row[7]]), np.array([row[8], row[9]]), np.array([row[10], row[11]]))
+            wing["Dv"] = discoidalvinkel(np.array([row[0], row[1]]), np.array([row[2], row[3]]), np.array([row[4], row[5]]), np.array([row[12], row[13]]))
             wings.append(wing)
             #print(wing)
             startRow = startRow + 1
@@ -277,8 +279,78 @@ def parseOdsWingFiles(inDir, outDir):
             data["meta"]["date parsed"] = now.strftime("%Y-%m-%d")
             data["wings"] = wings
             #print(wings)
-            with open(outDir + f_name + '.json', 'w') as outfile:  
+            with open(outDir + "bee-wing-" + f_name + "-x" + '.json', 'w') as outfile:  
                 json.dump(data, outfile)
+
+
+def parseXlsWingFiles(inDir, outDir):
+
+    print("Converting .xls wing files")
+    os.chdir(inDir)
+    files = findFilesExt('.xls')
+    if len(files) == 0:
+        print("No wingindex (.xls) files found")
+    #print(files)
+    ##wingData = np.array([],dtype=int)
+
+    for ff in files:
+        file = ff
+        print("Conv:", file, "\tfrom:\t", inDir)
+   
+        #file = "lillangen-pt-svarm.pos"
+        #file = f__path + f__name1
+        f_name, f_ext= file.split('.')
+
+        wings = []
+        #wb = xlrd.open_workbook("C:\\Users\\qpatole\\Programming\\Datafiler\\IngvarPettersson\\Datafiler\\Wassvik.OW.2016.Carnica O Wassvik[4699].xls")
+        wb = xlrd.open_workbook(file)
+        sheet = wb.sheet_by_name("Data")
+        #print(sheet.cell_value(2, 27) )
+
+        print("Done:", file, "\tto:\t", outDir)        
+        now = datetime.datetime.now()
+        
+        wings = []
+        startRow = 3
+        #print(sheet.row_values(3))
+        
+        for row in range(startRow,50):
+            if sheet.row_values(row)[0] =='' :
+                break
+            wing = {}
+            wing["image"] = f_name + "-" + str(startRow-2) + ".jpg"
+            wing["x1"] = sheet.cell_value(row, 0)
+            wing["y1"] = sheet.cell_value(row, 1)
+            wing["x2"] = sheet.cell_value(row, 2)
+            wing["y2"] = sheet.cell_value(row, 3)
+            wing["x3"] = sheet.cell_value(row, 4)
+            wing["y3"] = sheet.cell_value(row, 5)
+            wing["x4"] = sheet.cell_value(row, 6)
+            wing["y4"] = sheet.cell_value(row, 7)
+            wing["x5"] = sheet.cell_value(row, 8)
+            wing["y5"] = sheet.cell_value(row, 9)
+            wing["x6"] = sheet.cell_value(row, 10)
+            wing["y6"] = sheet.cell_value(row, 11)
+            wing["x7"] = sheet.cell_value(row, 12)
+            wing["y7"] = sheet.cell_value(row, 13)
+            wing["Ci"] = cubitalindex(np.array([wing["x4"], wing["y4"]]), np.array([wing["x5"], wing["y5"]]), np.array([wing["x6"], wing["y6"]]))
+            wing["Dv"] = discoidalvinkel(np.array([wing["x1"], wing["y1"]]), np.array([wing["x2"], wing["y2"]]), np.array([wing["x3"], wing["y3"]]), np.array([wing["x7"], wing["y7"]]))
+            wings.append(wing)           
+            
+            startRow = startRow + 1
+        
+            data = {}
+            data["meta"] = {}
+            data["meta"]["parsed file"] = file
+            data["meta"]["date parsed"] = now.strftime("%Y-%m-%d")
+            data["wings"] = wings
+            #print(wings)
+            with open(outDir + "bee-wing-" + f_name + "-x" + '.json', 'w') as outfile:  
+                json.dump(data, outfile)
+
+
+
+
 
 #Run through all mellwing files (.ving) and format them and save them to .csv
 #Run through all CBeeWing files (.pos) and format them and save them to .csv
@@ -308,6 +380,7 @@ parseCBeeWingFiles(inputDir, storeDir)
 #Run Per Thunmans files
 inputDir = 'C:\\Homeroot\\00Biodling\\bee\\WingDataFiles\\bee\\wings\\WingIndexFiles\\Unformated\\'
 parseOdsWingFiles(inputDir, storeDir)
+parseXlsWingFiles(inputDir, storeDir)
 
 
 """
